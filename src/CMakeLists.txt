@@ -19,7 +19,7 @@ add_library(protobuf-mutator
             mutator.cc
             text_format.cc
             utf8_fix.cc)
-target_include_directories(protobuf-mutator PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
+target_include_directories(protobuf-mutator PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 target_link_libraries(protobuf-mutator
                       protobuf::libprotobuf)
 set_target_properties(protobuf-mutator PROPERTIES

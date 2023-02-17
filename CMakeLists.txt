@@ -154,8 +154,6 @@ if (LIB_PROTO_MUTATOR_TESTING)
 endif()
 
 add_subdirectory(src)
-target_compile_options(protobuf-mutator-libfuzzer PRIVATE ${EXTRA_FLAGS})
-target_compile_options(protobuf-mutator PRIVATE ${EXTRA_FLAGS})
 
 if (NOT "${LIB_PROTO_MUTATOR_FUZZER_LIBRARIES}" STREQUAL "" OR
     NOT "${FUZZING_FLAGS}" STREQUAL "")
