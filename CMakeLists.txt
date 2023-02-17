@@ -18,9 +18,10 @@ project(LibProtobufMutator CXX)
 enable_language(C)
 enable_language(CXX)
 
-option(LIB_PROTO_MUTATOR_TESTING "Enable test building" ON)
+option(LIB_PROTO_MUTATOR_TESTING "Enable test building" OFF)
+option(LIB_PROTO_MUTATOR_INSTALL "Enable test installing" OFF)
 option(LIB_PROTO_MUTATOR_DOWNLOAD_PROTOBUF
-       "Automatically download working protobuf" OFF)
+       "Automatically download working protobuf" ON)
 option(LIB_PROTO_MUTATOR_WITH_ASAN "Enable address sanitizer" OFF)
 option(PKG_CONFIG_PATH "Directory to install pkgconfig file" "share/pkgconfig")
 set(LIB_PROTO_MUTATOR_FUZZER_LIBRARIES "" CACHE STRING "Fuzzing engine libs")
@@ -36,15 +37,16 @@ include(CheckCXXCompilerFlag)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads)
 
-find_package(LibLZMA)
-include_directories(${LIBLZMA_INCLUDE_DIRS})
+#find_package(LibLZMA)
+#include_directories(${LIBLZMA_INCLUDE_DIRS})
 
-find_package(ZLIB)
-include_directories(${ZLIB_INCLUDE_DIRS})
+#find_package(ZLIB)
+#include_directories(${ZLIB_INCLUDE_DIRS})
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-include_directories(${PROJECT_SOURCE_DIR})
+#include_directories(${PROJECT_SOURCE_DIR})
 
 if (MSVC)
   option(LIB_PROTO_MUTATOR_MSVC_STATIC_RUNTIME "Link static runtime libraries" ON)
@@ -111,9 +113,6 @@ if (LIB_PROTO_MUTATOR_HAS_NO_COVERAGE)
   set(NO_FUZZING_FLAGS "${NO_FUZZING_FLAGS} -fsanitize-coverage=0")
 endif()
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${EXTRA_FLAGS}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${EXTRA_FLAGS}")
-
 set(PROTOBUF_CFLAGS "${CMAKE_C_FLAGS} ${NO_FUZZING_FLAGS} -w")
 set(PROTOBUF_CXXFLAGS "${CMAKE_CXX_FLAGS} ${NO_FUZZING_FLAGS} -w")
 if(CMAKE_USE_PTHREADS_INIT)
@@ -121,12 +120,23 @@ if(CMAKE_USE_PTHREADS_INIT)
   set(PROTOBUF_CXXFLAGS "${PROTOBUF_CXXFLAGS} -pthread")
 endif()
 
-if (LIB_PROTO_MUTATOR_DOWNLOAD_PROTOBUF)
-  include(protobuf)
-else()
-  find_package(Protobuf REQUIRED)
-  include_directories(${PROTOBUF_INCLUDE_DIRS})
-  include_directories(${CMAKE_CURRENT_BINARY_DIR})
+if (NOT TARGET libprotobuf)
+  if (LIB_PROTO_MUTATOR_DOWNLOAD_PROTOBUF)
+    include(FetchContent)
+    FetchContent_Declare(protobuf
+      GIT_REPOSITORY "https://github.com/google/protobuf.git"
+      GIT_TAG v21.7
+    )
+    FetchContent_GetProperties(protobuf)
+	  if (NOT protobuf_POPULATED)
+	    FetchContent_Populate(protobuf)
+	  endif()
+    add_subdirectory(${protobuf_SOURCE_DIR} ${protobuf_BINARY_DIR} EXCLUDE_FROM_ALL)
+  else()
+    find_package(Protobuf REQUIRED)
+    include_directories(${PROTOBUF_INCLUDE_DIRS})
+    include_directories(${CMAKE_CURRENT_BINARY_DIR})
+  endif()
 endif()
 
 set(LIB_DIR "lib${LIB_SUFFIX}")
@@ -144,19 +154,23 @@ if (LIB_PROTO_MUTATOR_TESTING)
 endif()
 
 add_subdirectory(src)
+target_compile_options(protobuf-mutator-libfuzzer PRIVATE ${EXTRA_FLAGS})
+target_compile_options(protobuf-mutator PRIVATE ${EXTRA_FLAGS})
 
 if (NOT "${LIB_PROTO_MUTATOR_FUZZER_LIBRARIES}" STREQUAL "" OR
     NOT "${FUZZING_FLAGS}" STREQUAL "")
   add_subdirectory(examples EXCLUDE_FROM_ALL)
 endif()
 
-install(EXPORT libprotobuf-mutatorTargets FILE libprotobuf-mutatorTargets.cmake
-  NAMESPACE libprotobuf-mutator:: DESTINATION lib/cmake/libprotobuf-mutator)
-configure_file(libprotobuf-mutatorConfig.cmake.in libprotobuf-mutatorConfig.cmake @ONLY)
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/libprotobuf-mutatorConfig.cmake"
-  DESTINATION lib/cmake/libprotobuf-mutator)
-configure_file("libprotobuf-mutator.pc.in" "libprotobuf-mutator.pc" @ONLY)
-install(FILES "${CMAKE_BINARY_DIR}/libprotobuf-mutator.pc"
-  DESTINATION ${PKG_CONFIG_PATH})
-install(DIRECTORY ./port ./src DESTINATION include/libprotobuf-mutator
-  FILES_MATCHING PATTERN "*.h")
+if (LIB_PROTO_MUTATOR_INSTALL) 
+  install(EXPORT libprotobuf-mutatorTargets FILE libprotobuf-mutatorTargets.cmake
+    NAMESPACE libprotobuf-mutator:: DESTINATION lib/cmake/libprotobuf-mutator)
+  configure_file(libprotobuf-mutatorConfig.cmake.in libprotobuf-mutatorConfig.cmake @ONLY)
+  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/libprotobuf-mutatorConfig.cmake"
+    DESTINATION lib/cmake/libprotobuf-mutator)
+  configure_file("libprotobuf-mutator.pc.in" "libprotobuf-mutator.pc" @ONLY)
+  install(FILES "${CMAKE_BINARY_DIR}/libprotobuf-mutator.pc"
+    DESTINATION ${PKG_CONFIG_PATH})
+  install(DIRECTORY ./port ./src DESTINATION include/libprotobuf-mutator
+    FILES_MATCHING PATTERN "*.h")
+endif()

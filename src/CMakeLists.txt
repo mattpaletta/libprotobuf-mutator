@@ -19,8 +19,9 @@ add_library(protobuf-mutator
             mutator.cc
             text_format.cc
             utf8_fix.cc)
+target_include_directories(protobuf-mutator PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
 target_link_libraries(protobuf-mutator
-                      ${PROTOBUF_LIBRARIES})
+                      protobuf::libprotobuf)
 set_target_properties(protobuf-mutator PROPERTIES
                       COMPILE_FLAGS "${NO_FUZZING_FLAGS}"
                       SOVERSION 0)
@@ -59,8 +60,10 @@ if (LIB_PROTO_MUTATOR_TESTING)
   add_dependencies(check mutator_test)
 endif()
 
-install(TARGETS protobuf-mutator
-        EXPORT libprotobuf-mutatorTargets
-        ARCHIVE DESTINATION ${LIB_DIR}
-        LIBRARY DESTINATION ${LIB_DIR}
-        INCLUDES DESTINATION include/libprotobuf-mutator include/libprotobuf-mutator/src)
+if (LIB_PROTO_MUTATOR_INSTALL)
+  install(TARGETS protobuf-mutator
+          EXPORT libprotobuf-mutatorTargets
+          ARCHIVE DESTINATION ${LIB_DIR}
+          LIBRARY DESTINATION ${LIB_DIR}
+          INCLUDES DESTINATION include/libprotobuf-mutator include/libprotobuf-mutator/src)
+endif()
